@@ -689,6 +689,10 @@ func (this *X264ParamT) X264ParamDefault() {
 	)
 }
 
+func (this *X264ParamT) SetLogLevel(log_level ffcommon.FInt) {
+	this.i_log_level = log_level
+}
+
 /* x264_param_parse:
  *  set one parameter by name.
  *  returns 0 on success, or returns one of the following errors.
@@ -719,9 +723,9 @@ func (this *X264ParamT) X264ParamParse(name, value ffcommon.FConstCharP) (res ff
 //   - x264 itself, in e.g. x264_param_parse(). */
 //
 // X264_API void x264_param_cleanup( x264_param_t *param );
-func (param *X264ParamT) X264ParamCleanup() {
+func (this *X264ParamT) X264ParamCleanup() {
 	libx264common.GetLibx264Dll().NewProc("x264_param_cleanup").Call(
-		uintptr(unsafe.Pointer(param)),
+		uintptr(unsafe.Pointer(this)),
 	)
 }
 

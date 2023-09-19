@@ -20,7 +20,7 @@ func main0() ffcommon.FInt {
 
 	fpSrc, _ := os.Open("./resources/cuc_ieschool_640x360_yuv420p.yuv")
 	fpDstFile := "./out/cuc_ieschool_640x360_yuv420p.h264"
-	_ = os.MkdirAll(path.Dir(fpDstFile), os.ModeDir)
+	_ = os.MkdirAll(path.Dir(fpDstFile), 0755)
 	fpDst, _ := os.Create(fpDstFile)
 
 	//Encode 50 frame

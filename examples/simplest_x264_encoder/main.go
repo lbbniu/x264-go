@@ -4,39 +4,40 @@ package main
 import (
 	"fmt"
 	"os"
+	"path"
 	"unsafe"
 
 	"github.com/moonfdd/ffmpeg-go/ffcommon"
+	"github.com/moonfdd/x264-go/lib"
 	"github.com/moonfdd/x264-go/libx264"
-	"github.com/moonfdd/x264-go/libx264common"
 )
 
 func main0() ffcommon.FInt {
 
 	var ret ffcommon.FInt
-	var y_size ffcommon.FInt
+	var ySize ffcommon.FInt
 	var i, j ffcommon.FInt
 
-	//FILE* fp_src  = fopen("../cuc_ieschool_640x360_yuv444p.yuv", "rb");
-	fp_src, _ := os.Open("./resources/cuc_ieschool_640x360_yuv420p.yuv")
-	fp_dst_file := "./out/cuc_ieschool_640x360_yuv420p.h264"
-	fp_dst, _ := os.Create(fp_dst_file)
+	fpSrc, _ := os.Open("./resources/cuc_ieschool_640x360_yuv420p.yuv")
+	fpDstFile := "./out/cuc_ieschool_640x360_yuv420p.h264"
+	_ = os.MkdirAll(path.Dir(fpDstFile), os.ModeDir)
+	fpDst, _ := os.Create(fpDstFile)
 
 	//Encode 50 frame
 	//if set 0, encode all frame
-	var frame_num ffcommon.FInt = 0
+	var frameNum ffcommon.FInt = 0
 	var csp ffcommon.FInt = libx264.X264_CSP_I420
 	var width, height ffcommon.FInt = 640, 360
 
 	var iNal ffcommon.FInt = 0
 	var pNals *libx264.X264NalT
 	var pHandle *libx264.X264T
-	pPic_in := new(libx264.X264PictureT)
-	pPic_out := new(libx264.X264PictureT)
+	picIn := new(libx264.X264PictureT)
+	picOut := new(libx264.X264PictureT)
 	pParam := new(libx264.X264ParamT)
 
 	//Check
-	if fp_src == nil || fp_dst == nil {
+	if fpSrc == nil || fpDst == nil {
 		fmt.Printf("Error open files.\n")
 		return -1
 	}
@@ -67,50 +68,44 @@ func main0() ffcommon.FInt {
 
 	pHandle = pParam.X264EncoderOpen164()
 
-	pPic_out.X264PictureInit()
-	pPic_in.X264PictureAlloc(csp, pParam.IWidth, pParam.IHeight)
+	picOut.X264PictureInit()
+	picIn.X264PictureAlloc(csp, pParam.IWidth, pParam.IHeight)
 
 	//ret = x264_encoder_headers(pHandle, &pNals, &iNal);
 
-	y_size = pParam.IWidth * pParam.IHeight
+	ySize = pParam.IWidth * pParam.IHeight
 	//detect frame number
-	if frame_num == 0 {
-		fi, _ := fp_src.Stat()
-		switch csp {
-		case libx264.X264_CSP_I444:
-			frame_num = int32(fi.Size()) / (y_size * 3)
-		case libx264.X264_CSP_I420:
-			frame_num = int32(fi.Size()) / (y_size * 3 / 2)
-		default:
-			fmt.Printf("Colorspace Not Support.\n")
-			return -1
-		}
+	fi, _ := fpSrc.Stat()
+	switch csp {
+	case libx264.X264_CSP_I444:
+		frameNum = int32(fi.Size()) / (ySize * 3)
+	case libx264.X264_CSP_I420:
+		frameNum = int32(fi.Size()) / (ySize * 3 / 2)
+	default:
+		fmt.Printf("Colorspace Not Support.\n")
+		return -1
 	}
 
 	//Loop to Encode
-	for i = 0; i < frame_num; i++ {
+	for i = 0; i < frameNum; i++ {
 		switch csp {
 		case libx264.X264_CSP_I444:
-
-			fp_src.Read(ffcommon.ByteSliceFromByteP(pPic_in.Img.Plane[0], int(y_size))) //Y
-			fp_src.Read(ffcommon.ByteSliceFromByteP(pPic_in.Img.Plane[1], int(y_size))) //U
-			fp_src.Read(ffcommon.ByteSliceFromByteP(pPic_in.Img.Plane[2], int(y_size))) //V
+			fpSrc.Read(ffcommon.ByteSliceFromByteP(picIn.Img.Plane[0], int(ySize))) //Y
+			fpSrc.Read(ffcommon.ByteSliceFromByteP(picIn.Img.Plane[1], int(ySize))) //U
+			fpSrc.Read(ffcommon.ByteSliceFromByteP(picIn.Img.Plane[2], int(ySize))) //V
 
 		case libx264.X264_CSP_I420:
-
-			fp_src.Read(ffcommon.ByteSliceFromByteP(pPic_in.Img.Plane[0], int(y_size)))   //Y
-			fp_src.Read(ffcommon.ByteSliceFromByteP(pPic_in.Img.Plane[1], int(y_size/4))) //U
-			fp_src.Read(ffcommon.ByteSliceFromByteP(pPic_in.Img.Plane[2], int(y_size/4))) //V
+			fpSrc.Read(ffcommon.ByteSliceFromByteP(picIn.Img.Plane[0], int(ySize)))   //Y
+			fpSrc.Read(ffcommon.ByteSliceFromByteP(picIn.Img.Plane[1], int(ySize/4))) //U
+			fpSrc.Read(ffcommon.ByteSliceFromByteP(picIn.Img.Plane[2], int(ySize/4))) //V
 
 		default:
-
 			fmt.Printf("Colorspace Not Support.\n")
 			return -1
-
 		}
-		pPic_in.IPts = int64(i)
+		picIn.IPts = int64(i)
 
-		ret = pHandle.X264EncoderEncode(&pNals, &iNal, pPic_in, pPic_out)
+		ret = pHandle.X264EncoderEncode(&pNals, &iNal, picIn, picOut)
 		if ret < 0 {
 			fmt.Printf("Error.\n")
 			return -1
@@ -121,13 +116,13 @@ func main0() ffcommon.FInt {
 		for j = 0; j < iNal; j++ {
 			a := unsafe.Sizeof(libx264.X264NalT{})
 			pNal := (*libx264.X264NalT)(unsafe.Pointer(uintptr(unsafe.Pointer(pNals)) + uintptr(a*uintptr(j))))
-			fp_dst.Write(ffcommon.ByteSliceFromByteP(pNal.PPayload, int(pNal.IPayload)))
+			fpDst.Write(ffcommon.ByteSliceFromByteP(pNal.PPayload, int(pNal.IPayload)))
 		}
 	}
 	i = 0
 	//flush encoder
 	for {
-		ret = pHandle.X264EncoderEncode(&pNals, &iNal, nil, pPic_out)
+		ret = pHandle.X264EncoderEncode(&pNals, &iNal, nil, picOut)
 		if ret == 0 {
 			break
 		}
@@ -135,25 +130,23 @@ func main0() ffcommon.FInt {
 		for j = 0; j < iNal; j++ {
 			a := unsafe.Sizeof(libx264.X264NalT{})
 			pNal := (*libx264.X264NalT)(unsafe.Pointer(uintptr(unsafe.Pointer(pNals)) + uintptr(a*uintptr(j))))
-			fp_dst.Write(ffcommon.ByteSliceFromByteP(pNal.PPayload, int(pNal.IPayload)))
+			fpDst.Write(ffcommon.ByteSliceFromByteP(pNal.PPayload, int(pNal.IPayload)))
 		}
 		i++
 	}
-	pPic_in.X264PictureClean()
+	picIn.X264PictureClean()
 	pHandle.X264EncoderClose()
 	pHandle = nil
 
-	fp_src.Close()
-	fp_dst.Close()
+	fpSrc.Close()
+	fpDst.Close()
 
-	fmt.Printf("\nffplay %s\n", fp_dst_file)
-
+	fmt.Printf("\nffplay %s\n", fpDstFile)
 	return 0
 }
 
 func main() {
+	lib.Init()
 	fmt.Println(libx264.X264_POINTVER)
-	os.Setenv("Path", os.Getenv("Path")+";./lib")
-	libx264common.SetLibx264Path("./lib/libx264-164.dll")
 	main0()
 }

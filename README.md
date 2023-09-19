@@ -1,7 +1,9 @@
 # x264-go
 golang binding for libx264
 
-test passed win10 x64
+test passed win10/macos x64
+
+support win10/macos
 
 # fast start
 

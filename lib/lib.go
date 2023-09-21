@@ -14,11 +14,15 @@ func Init() {
 		panic(err)
 	}
 	libPath := path.Join(dir, ".lbbniu")
+	libFile := path.Join(libPath, libName)
+	if _, err = os.Stat(libFile); err == nil {
+		return
+	}
 	if err = RestoreAssets(libPath, libName); err != nil {
 		panic(err)
 	}
 	if err = os.Setenv("Path", os.Getenv("Path")+";./lib"); err != nil {
 		panic(err)
 	}
-	libx264common.SetLibx264Path(path.Join(libPath, libName))
+	libx264common.SetLibx264Path(libFile)
 }
